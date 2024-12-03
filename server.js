@@ -165,8 +165,11 @@ connection.connect(err => {
         });
 
         const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
+        // Start the server
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`Server is running on http://0.0.0.0:${PORT}`);
+            console.log(`Access locally via http://localhost:${PORT}`);
+            console.log(`Access from other devices via http://192.168.0.104:${PORT}`);
         });
     });
 });

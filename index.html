@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Management</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -103,44 +105,116 @@
             transform: translateY(0);
         }
 
-        .task-list {
-            list-style: none;
-            max-height: 70vh;
-            overflow-y: auto;
-            padding-right: 5px;
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
-        .task-list::-webkit-scrollbar {
-            width: 8px;
+        .view-controls, .sort-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
-        .task-list::-webkit-scrollbar-track {
-            background: #f7fafc;
-            border-radius: 4px;
+        .control-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: transparent;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .task-list::-webkit-scrollbar-thumb {
+        .control-btn:hover {
             background: #667eea;
-            border-radius: 4px;
+            color: white;
+        }
+
+        .control-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .sort-select {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #2d3748;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .task-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .task-container.grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
         }
 
         .task-item {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            background: white;
-            margin-bottom: 15px;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            border: 1px solid #e2e8f0;
-            gap: 15px;
-            flex-wrap: wrap;
+            cursor: grab;
         }
 
-        .task-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            border-color: #667eea;
+        .task-item:active {
+            cursor: grabbing;
+        }
+
+        .task-container.grid .task-item {
+            flex-direction: column;
+            align-items: flex-start;
+            height: 100%;
+        }
+
+        .task-container.grid .task-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        .task-container.grid .edit-btn,
+        .task-container.grid .delete-btn {
+            flex: 1;
+        }
+
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #667eea !important;
+        }
+
+        .sortable-drag {
+            opacity: 0.9;
+            transform: scale(1.05);
+            background: white;
+        }
+
+        .handle {
+            cursor: grab;
+            padding: 8px;
+            margin: -8px;
+            border-radius: 4px;
+            color: #667eea;
+        }
+
+        .handle:hover {
+            background: rgba(102, 126, 234, 0.1);
         }
 
         .task-checkbox {
@@ -290,6 +364,22 @@
                 background-color: #2d3748;
                 color: #f7fafc;
             }
+
+            .sort-select {
+                background: #2d3748;
+                color: #f7fafc;
+                border-color: #4a5568;
+            }
+
+            .control-btn {
+                border-color: #4a5568;
+                color: #f7fafc;
+            }
+
+            .control-btn:hover,
+            .control-btn.active {
+                background: #4a5568;
+            }
         }
     </style>
 </head>
@@ -302,9 +392,29 @@
             <button type="submit" class="add-btn">Add Task</button>
         </form>
 
-        <ul class="task-list" id="taskList">
+        <div class="controls">
+            <div class="view-controls">
+                <button class="control-btn active" id="listView">
+                    <i class="fas fa-list"></i> List
+                </button>
+                <button class="control-btn" id="gridView">
+                    <i class="fas fa-th-large"></i> Grid
+                </button>
+            </div>
+            <div class="sort-controls">
+                <select class="sort-select" id="sortSelect">
+                    <option value="default">Default Order</option>
+                    <option value="az">A to Z</option>
+                    <option value="za">Z to A</option>
+                    <option value="completed">Completed First</option>
+                    <option value="active">Active First</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="task-container" id="taskList">
             <!-- Tasks will be added here dynamically -->
-        </ul>
+        </div>
     </div>
 
     <script>
@@ -312,6 +422,74 @@
             const taskForm = document.getElementById('taskForm');
             const taskInput = document.getElementById('taskInput');
             const taskList = document.getElementById('taskList');
+            const listViewBtn = document.getElementById('listView');
+            const gridViewBtn = document.getElementById('gridView');
+            const sortSelect = document.getElementById('sortSelect');
+
+            // Initialize Sortable
+            new Sortable(taskList, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                handle: '.handle',
+                onEnd: function(evt) {
+                    // Here you can add logic to update the order in the database
+                    console.log('Item was dragged', evt.oldIndex, evt.newIndex);
+                }
+            });
+
+            // View Toggle
+            listViewBtn.addEventListener('click', () => {
+                taskList.classList.remove('grid');
+                listViewBtn.classList.add('active');
+                gridViewBtn.classList.remove('active');
+                localStorage.setItem('viewMode', 'list');
+            });
+
+            gridViewBtn.addEventListener('click', () => {
+                taskList.classList.add('grid');
+                gridViewBtn.classList.add('active');
+                listViewBtn.classList.remove('active');
+                localStorage.setItem('viewMode', 'grid');
+            });
+
+            // Restore view preference
+            if (localStorage.getItem('viewMode') === 'grid') {
+                taskList.classList.add('grid');
+                gridViewBtn.classList.add('active');
+                listViewBtn.classList.remove('active');
+            }
+
+            // Sort tasks
+            function sortTasks() {
+                const tasks = Array.from(taskList.children);
+                const sortValue = sortSelect.value;
+
+                tasks.sort((a, b) => {
+                    const textA = a.querySelector('.task-text').textContent;
+                    const textB = b.querySelector('.task-text').textContent;
+                    const isCompletedA = a.querySelector('.task-checkbox').checked;
+                    const isCompletedB = b.querySelector('.task-checkbox').checked;
+
+                    switch (sortValue) {
+                        case 'az':
+                            return textA.localeCompare(textB);
+                        case 'za':
+                            return textB.localeCompare(textA);
+                        case 'completed':
+                            return isCompletedB - isCompletedA;
+                        case 'active':
+                            return isCompletedA - isCompletedB;
+                        default:
+                            return 0;
+                    }
+                });
+
+                // Reappend sorted tasks
+                tasks.forEach(task => taskList.appendChild(task));
+            }
+
+            sortSelect.addEventListener('change', sortTasks);
 
             // Load tasks from server
             async function loadTasks() {
@@ -331,6 +509,10 @@
                     const li = document.createElement('li');
                     li.className = 'task-item';
                     
+                    const handle = document.createElement('span');
+                    handle.className = 'handle';
+                    handle.innerHTML = '<i class="fas fa-grip-vertical"></i>';
+                    
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.className = 'task-checkbox';
@@ -340,36 +522,39 @@
                     span.className = `task-text ${task.completed ? 'completed' : ''}`;
                     span.textContent = task.text;
                     
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'task-actions';
+                    
                     const editBtn = document.createElement('button');
                     editBtn.className = 'edit-btn';
-                    editBtn.textContent = 'Edit';
+                    editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
                     
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'delete-btn';
-                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete';
                     
+                    actionsDiv.appendChild(editBtn);
+                    actionsDiv.appendChild(deleteBtn);
+                    
+                    li.appendChild(handle);
                     li.appendChild(checkbox);
                     li.appendChild(span);
-                    li.appendChild(editBtn);
-                    li.appendChild(deleteBtn);
+                    li.appendChild(actionsDiv);
                     taskList.appendChild(li);
 
                     // Event listeners
                     checkbox.addEventListener('change', () => toggleTask(task.id));
                     deleteBtn.addEventListener('click', () => deleteTask(task.id));
                     
-                    // Edit functionality
                     editBtn.addEventListener('click', () => {
                         const input = document.createElement('input');
                         input.type = 'text';
                         input.className = 'task-input editing';
                         input.value = task.text;
                         
-                        // Replace span with input
                         span.replaceWith(input);
                         input.focus();
                         
-                        // Save on enter or blur
                         input.addEventListener('keyup', async (e) => {
                             if (e.key === 'Enter') {
                                 await updateTask(task.id, input.value);
@@ -385,6 +570,9 @@
                         });
                     });
                 });
+
+                // Apply current sort
+                sortTasks();
             }
 
             // Add new task
