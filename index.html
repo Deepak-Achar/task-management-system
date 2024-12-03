@@ -160,94 +160,88 @@
             flex-direction: column;
             gap: 15px;
             transition: all 0.3s ease;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .task-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .task-container::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+
+        .task-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            gap: 15px;
+            cursor: grab;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
         }
 
         .task-container.grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 20px;
-        }
-
-        .task-item {
-            cursor: grab;
-        }
-
-        .task-item:active {
-            cursor: grabbing;
+            align-items: start;
         }
 
         .task-container.grid .task-item {
             flex-direction: column;
-            align-items: flex-start;
-            height: 100%;
+            align-items: stretch;
+        }
+
+        .task-container.grid .task-text {
+            margin: 10px 0;
         }
 
         .task-container.grid .task-actions {
+            margin-left: 0;
+            margin-top: 10px;
+        }
+
+        .task-checkbox-wrapper {
             display: flex;
+            align-items: center;
             gap: 10px;
-            margin-top: 15px;
-            width: 100%;
-        }
-
-        .task-container.grid .edit-btn,
-        .task-container.grid .delete-btn {
-            flex: 1;
-        }
-
-        .sortable-ghost {
-            opacity: 0.4;
-            background: #667eea !important;
-        }
-
-        .sortable-drag {
-            opacity: 0.9;
-            transform: scale(1.05);
-            background: white;
         }
 
         .handle {
-            cursor: grab;
-            padding: 8px;
-            margin: -8px;
-            border-radius: 4px;
             color: #667eea;
+            cursor: grab;
+            padding: 5px;
+            display: flex;
+            align-items: center;
         }
 
         .handle:hover {
             background: rgba(102, 126, 234, 0.1);
-        }
-
-        .task-checkbox {
-            width: 22px;
-            height: 22px;
-            cursor: pointer;
-            border-radius: 6px;
-            border: 2px solid #667eea;
-            appearance: none;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .task-checkbox:checked {
-            background-color: #667eea;
-        }
-
-        .task-checkbox:checked::after {
-            content: '✓';
-            position: absolute;
-            color: white;
-            font-size: 14px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            border-radius: 4px;
         }
 
         .task-text {
             flex: 1;
             font-size: clamp(14px, 2vw, 16px);
             color: #2d3748;
-            min-width: 150px;
-            transition: all 0.3s ease;
+            word-break: break-word;
         }
 
         .completed {
@@ -260,12 +254,12 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            font-size: clamp(12px, 1.8vw, 14px);
+            font-size: 14px;
             transition: all 0.3s ease;
-            font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
+            white-space: nowrap;
         }
 
         .edit-btn {
@@ -291,13 +285,49 @@
         }
 
         .task-input.editing {
-            padding: 12px;
-            margin: -12px 0;
+            flex: 1;
+            padding: 8px 12px;
             border: 2px solid #667eea;
             border-radius: 8px;
             font-size: inherit;
-            width: 100%;
-            background: white;
+            margin: 0;
+        }
+
+        @media (max-width: 640px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .view-controls, .sort-controls {
+                width: 100%;
+            }
+
+            .view-controls {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .task-container.grid {
+                grid-template-columns: 1fr;
+            }
+
+            .task-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .task-actions {
+                margin-left: 0;
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .edit-btn, .delete-btn {
+                justify-content: center;
+            }
         }
 
         @media (max-width: 480px) {
@@ -508,6 +538,9 @@
                 tasks.forEach(task => {
                     const li = document.createElement('li');
                     li.className = 'task-item';
+
+                    const checkboxWrapper = document.createElement('div');
+                    checkboxWrapper.className = 'task-checkbox-wrapper';
                     
                     const handle = document.createElement('span');
                     handle.className = 'handle';
@@ -517,6 +550,9 @@
                     checkbox.type = 'checkbox';
                     checkbox.className = 'task-checkbox';
                     checkbox.checked = task.completed;
+                    
+                    checkboxWrapper.appendChild(handle);
+                    checkboxWrapper.appendChild(checkbox);
                     
                     const span = document.createElement('span');
                     span.className = `task-text ${task.completed ? 'completed' : ''}`;
@@ -536,8 +572,7 @@
                     actionsDiv.appendChild(editBtn);
                     actionsDiv.appendChild(deleteBtn);
                     
-                    li.appendChild(handle);
-                    li.appendChild(checkbox);
+                    li.appendChild(checkboxWrapper);
                     li.appendChild(span);
                     li.appendChild(actionsDiv);
                     taskList.appendChild(li);
