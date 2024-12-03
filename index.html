@@ -213,6 +213,15 @@
             margin: 10px 0;
         }
 
+        .task-container.grid .task-content {
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        .task-container.grid .task-timestamp {
+            margin-top: 4px;
+        }
+
         .task-container.grid .task-actions {
             margin-left: 0;
             margin-top: 10px;
@@ -242,6 +251,16 @@
             font-size: clamp(14px, 2vw, 16px);
             color: #2d3748;
             word-break: break-word;
+        }
+
+        .task-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .task-timestamp {
+            font-size: 12px;
+            color: #a0aec0;
         }
 
         .completed {
@@ -536,9 +555,10 @@
             function renderTasks(tasks) {
                 taskList.innerHTML = '';
                 tasks.forEach(task => {
-                    const li = document.createElement('li');
-                    li.className = 'task-item';
-
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = 'task-item';
+                    
+                    // Checkbox wrapper
                     const checkboxWrapper = document.createElement('div');
                     checkboxWrapper.className = 'task-checkbox-wrapper';
                     
@@ -554,10 +574,25 @@
                     checkboxWrapper.appendChild(handle);
                     checkboxWrapper.appendChild(checkbox);
                     
+                    // Task content wrapper
+                    const contentWrapper = document.createElement('div');
+                    contentWrapper.className = 'task-content';
+                    
+                    // Task text
                     const span = document.createElement('span');
                     span.className = `task-text ${task.completed ? 'completed' : ''}`;
                     span.textContent = task.text;
                     
+                    // Timestamp
+                    const timestamp = document.createElement('small');
+                    timestamp.className = 'task-timestamp';
+                    const date = new Date(task.created_at || Date.now());
+                    timestamp.textContent = date.toLocaleString();
+                    
+                    contentWrapper.appendChild(span);
+                    contentWrapper.appendChild(timestamp);
+                    
+                    // Actions wrapper
                     const actionsDiv = document.createElement('div');
                     actionsDiv.className = 'task-actions';
                     
@@ -572,15 +607,14 @@
                     actionsDiv.appendChild(editBtn);
                     actionsDiv.appendChild(deleteBtn);
                     
-                    li.appendChild(checkboxWrapper);
-                    li.appendChild(span);
-                    li.appendChild(actionsDiv);
-                    taskList.appendChild(li);
+                    taskDiv.appendChild(checkboxWrapper);
+                    taskDiv.appendChild(contentWrapper);
+                    taskDiv.appendChild(actionsDiv);
+                    taskList.appendChild(taskDiv);
 
                     // Event listeners
                     checkbox.addEventListener('change', () => toggleTask(task.id));
                     deleteBtn.addEventListener('click', () => deleteTask(task.id));
-                    
                     editBtn.addEventListener('click', () => {
                         const input = document.createElement('input');
                         input.type = 'text';
@@ -594,8 +628,6 @@
                             if (e.key === 'Enter') {
                                 await updateTask(task.id, input.value);
                                 loadTasks();
-                            } else if (e.key === 'Escape') {
-                                loadTasks();
                             }
                         });
                         
@@ -605,9 +637,6 @@
                         });
                     });
                 });
-
-                // Apply current sort
-                sortTasks();
             }
 
             // Add new task
